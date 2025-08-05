@@ -244,9 +244,10 @@ func blocksToGraphInduction(root Block) GraphInductionProofHelper {
 				stepTransitions: []string{},
 				helper:          blocksToProofHelper(block.body),
 			}
-			if block.first.trailingMode == TRAILING_NOW {
+			switch block.first.trailingMode {
+			case TRAILING_NOW:
 				node.epsTransitions = append(node.epsTransitions, block.first.nowWordArray()...)
-			} else if block.first.trailingMode == TRAILING_STEP {
+			case TRAILING_STEP:
 				node.stepTransitions = append(node.stepTransitions, block.first.stepWordArray()...)
 			}
 			cmd.nodes[block.first.wordArg(0)] = node
@@ -254,9 +255,10 @@ func blocksToGraphInduction(root Block) GraphInductionProofHelper {
 			block.first.fixArgs(1)
 			name := block.first.wordArg(0)
 			node := cmd.nodes[name]
-			if block.first.trailingMode == TRAILING_NOW {
+			switch block.first.trailingMode {
+			case TRAILING_NOW:
 				node.epsTransitions = append(node.epsTransitions, block.first.nowWordArray()...)
-			} else if block.first.trailingMode == TRAILING_STEP {
+			case TRAILING_STEP:
 				node.stepTransitions = append(node.stepTransitions, block.first.stepWordArray()...)
 			}
 			cmd.nodes[name] = node

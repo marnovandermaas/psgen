@@ -3,9 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"maps"
 	"os"
-	"strings"
 	"strconv"
+	"strings"
 )
 
 var paths []string
@@ -17,6 +18,8 @@ var task bool
 var clocking bool
 var stepPrefix bool
 var listOut string
+var covers bool
+var coverAssert bool
 
 func main() {
 	paths = []string{}
@@ -32,6 +35,8 @@ func main() {
 	flag.BoolVar(&task, "task", false, "instead of using proof_structure, generate a set of TCL tasks of assumptions and assertions")
 	flag.BoolVar(&clocking, "clocking", false, "produce @(posedge clk_i) disable iff (~rst_ni) in front of each property")
 	flag.BoolVar(&stepPrefix, "step-prefix", false, "Prefix all properties with Step[step number]_")
+	flag.BoolVar(&covers, "covers", false, "Also emit cover properties for the LHS of every implication")
+	flag.BoolVar(&coverAssert, "cover-assert", false, "Emit any cover statements as asserts instead")
 	flag.Parse()
 
 	if len(paths) == 0 {
@@ -61,12 +66,8 @@ func main() {
 		_, blocks := parseBlocks(str, -1)
 		structure := blocksToProofDocument(blocks)
 
-		for k, v := range structure.lemmas {
-			scope.lemmas[k] = v
-		}
-		for k, v := range structure.defs {
-			scope.defs[k] = v
-		}
+		maps.Copy(scope.lemmas, structure.lemmas)
+		maps.Copy(scope.defs, structure.defs)
 	}
 
 	lemma, ok := scope.lemmas[rootLemma]
@@ -82,7 +83,7 @@ func main() {
 	seq.checkNames()
 
 	if svOut != "" {
-		sva := seq.toSva(slice, clocking, stepPrefix, 100)
+		sva := seq.toSva(slice, clocking, stepPrefix, covers, coverAssert, 100)
 		os.WriteFile(svOut, []byte(sva), 0664)
 	}
 

@@ -778,6 +778,43 @@ func (prop *Property) toSva(assume bool, clocking bool, stepPrefix bool, lineWid
 	}, lineWidth)
 }
 
+func (prop *Property) toCoverSva(clocking bool, stepPrefix bool, asAssert bool, lineWidth int, stepNo int) string {
+	if len(prop.preConditions) == 0 {
+		return ""
+	}
+
+	unsplittableStart := ""
+	if stepPrefix {
+		unsplittableStart += "Step" + strconv.Itoa(stepNo) + "_"
+	}
+	unsplittableStart += prop.name + "_Cover: "
+	if asAssert {
+		unsplittableStart += "assert"
+	} else {
+		unsplittableStart += "cover"
+	}
+	unsplittableStart += " property "
+
+	inner := TokenStream{}
+	if clocking {
+		inner = append(inner, &NameToken{content: "@(posedge clk_i) disable iff (~rst_ni) "})
+	}
+
+	if prop.wait != 0 {
+		inner = append(inner, &OperatorToken{
+			operator: "##" + strconv.Itoa(prop.wait),
+		})
+		inner = append(inner, &WhiteSpaceToken{})
+	}
+	inner = append(inner, conjoin(prop.preConditions)...)
+
+	return formatStream(TokenStream{
+		&NameToken{content: unsplittableStart},
+		paren(inner),
+		&OperatorToken{operator: ";"},
+	}, lineWidth)
+}
+
 func (wire *Wiring) toSva(lineWidth int) string {
 	unsplittableStart := "assign " + wire.name + " = "
 	stream := TokenStream{}
@@ -787,7 +824,7 @@ func (wire *Wiring) toSva(lineWidth int) string {
 	return formatStream(stream, lineWidth)
 }
 
-func (seq *FlatProofSequence) toSva(slice int, clocking bool, stepPrefix bool, lineWidth int) string {
+func (seq *FlatProofSequence) toSva(slice int, clocking bool, stepPrefix bool, covers bool, coverAssert bool, lineWidth int) string {
 	sva := ""
 
 	for _, wire := range seq.wires {
@@ -801,6 +838,9 @@ func (seq *FlatProofSequence) toSva(slice int, clocking bool, stepPrefix bool, l
 		sva += "`ifndef REMOVE_SLICE_" + strconv.Itoa(i) + "\n"
 		for _, prop := range step {
 			sva += prop.toSva(slice != -1 && i != slice, clocking, stepPrefix, lineWidth, i) + "\n"
+			if covers {
+				sva += prop.toCoverSva(clocking, stepPrefix, coverAssert, lineWidth, i) + "\n"
+			}
 		}
 		sva += "`endif\n\n"
 	}
